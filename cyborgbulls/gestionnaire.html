@@ -37,31 +37,27 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
         import { getFirestore, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
+        import Swal from 'https://cdn.jsdelivr.net/npm/sweetalert2@11';
     
         const firebaseConfig = {
             apiKey: "AIzaSyCzOw-8VqfXUjYChfqX2K06goSoiDETlWc",
             authDomain: "tkt-pas-admin-cyborgbulls.firebaseapp.com",
-            databaseURL: "https://tkt-pas-admin-cyborgbulls-default-rtdb.europe-west1.firebasedatabase.app",
             projectId: "tkt-pas-admin-cyborgbulls",
-            storageBucket: "tkt-pas-admin-cyborgbulls.appspot.com",
-            messagingSenderId: "85873062063",
-            appId: "1:85873062063:web:c86af7c134581c893ce45a",
-            measurementId: "G-EYQNSDCLVL"
         };
     
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
     
         const adherentsList = document.getElementById('adhérents-list');
-    
         const adherentsCollection = collection(db, 'adherents');
+    
         getDocs(adherentsCollection).then(snapshot => {
             snapshot.docs.forEach(doc => {
-                displayAdherent(doc.data());
+                displayAdherent(doc.data(), doc.id);
             });
         });
     
-        function displayAdherent(data) {
+        function displayAdherent(data, docId) {
             const row = adherentsList.insertRow();
             row.innerHTML = `
                 <td>${data.Nom}</td>
@@ -74,26 +70,51 @@
                 <td>${data.Adhésion}</td>
                 <td>${data['Sur fil whatsapp']}</td>
                 <td>
-                    <button class="suggest-btn" onclick="suggestModif('${data.Nom}', '${data.Prénom}')">Suggérer</button>
+                    <button class="suggest-btn" onclick="suggestModif('${docId}', '${data.Nom}', '${data.Prénom}')">Suggérer</button>
                 </td>
             `;
         }
     
-        function suggestModif(nom, prenom) {
-            const suggestion = prompt(`Modifier l'adhérent ${nom} ${prenom}. Entrez les modifications:`);
-            if (suggestion) {
-                addDoc(collection(db, 'Modifs_suggestions'), {
-                    NOM: nom,
-                    Prénom: prenom,
-                    suggestion: suggestion,
-                    status: 'En attente'
-                }).then(() => {
-                    alert('Suggestion envoyée !');
-                }).catch((error) => {
-                    console.error("Erreur lors de l'envoi de la suggestion : ", error);
-                });
-            }
+        // Fonction pour suggérer une modification avec SweetAlert
+        function suggestModif(id, nom, prenom) {
+            Swal.fire({
+                title: `Modifier l'adhérent ${nom} ${prenom}`,
+                html: `
+                    <input id="newNom" class="swal2-input" placeholder="Nouveau Nom" value="${nom}">
+                    <input id="newPrenom" class="swal2-input" placeholder="Nouveau Prénom" value="${prenom}">
+                    <input id="newAge" class="swal2-input" placeholder="Nouvel Âge">
+                    <input id="newTel" class="swal2-input" placeholder="Nouveau Téléphone">
+                    <input id="newMail" class="swal2-input" placeholder="Nouveau Mail">
+                `,
+                focusConfirm: false,
+                preConfirm: () => {
+                    const newNom = document.getElementById('newNom').value;
+                    const newPrenom = document.getElementById('newPrenom').value;
+                    const newAge = document.getElementById('newAge').value;
+                    const newTel = document.getElementById('newTel').value;
+                    const newMail = document.getElementById('newMail').value;
+                    return { newNom, newPrenom, newAge, newTel, newMail };
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Ajouter la suggestion à la collection Modifs_suggestions
+                    addDoc(collection(db, 'Modifs_suggestions'), {
+                        NOM: result.value.newNom,
+                        Prénom: result.value.newPrenom,
+                        Âge: result.value.newAge,
+                        Tel: result.value.newTel,
+                        Mail: result.value.newMail,
+                        idAdherent: id,
+                        status: 'En attente'
+                    }).then(() => {
+                        Swal.fire('Suggestion envoyée !', '', 'success');
+                    }).catch((error) => {
+                        console.error("Erreur lors de l'envoi de la suggestion : ", error);
+                        Swal.fire('Erreur', 'Impossible d\'envoyer la suggestion', 'error');
+                    });
+                }
+            });
         }
-    </script>    
-</body>
+    </script>
+    </body>
 </html>

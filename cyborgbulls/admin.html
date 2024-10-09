@@ -37,24 +37,20 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
         import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
+        import Swal from 'https://cdn.jsdelivr.net/npm/sweetalert2@11';
     
         const firebaseConfig = {
             apiKey: "AIzaSyCzOw-8VqfXUjYChfqX2K06goSoiDETlWc",
             authDomain: "tkt-pas-admin-cyborgbulls.firebaseapp.com",
-            databaseURL: "https://tkt-pas-admin-cyborgbulls-default-rtdb.europe-west1.firebasedatabase.app",
             projectId: "tkt-pas-admin-cyborgbulls",
-            storageBucket: "tkt-pas-admin-cyborgbulls.appspot.com",
-            messagingSenderId: "85873062063",
-            appId: "1:85873062063:web:c86af7c134581c893ce45a",
-            measurementId: "G-EYQNSDCLVL"
         };
     
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
     
         const adherentsList = document.getElementById('adhérents-list');
-    
         const adherentsCollection = collection(db, 'adherents');
+    
         getDocs(adherentsCollection).then(snapshot => {
             snapshot.docs.forEach(doc => {
                 displayAdherent(doc.data(), doc.id);
@@ -80,30 +76,51 @@
             `;
         }
     
+        // Modifier un adhérent
         function editAdherent(id, nom, prenom) {
-            const newNom = prompt(`Modifier le nom de ${nom}`, nom);
-            const newPrenom = prompt(`Modifier le prénom de ${prenom}`, prenom);
-            if (newNom && newPrenom) {
-                const docRef = doc(db, 'adherents', id);
-                addDoc(docRef, {
-                    Nom: newNom,
-                    Prénom: newPrenom
-                }).then(() => {
-                    alert('Adhérent modifié !');
-                }).catch(error => {
-                    console.error("Erreur lors de la modification : ", error);
-                });
-            }
-        }
-    
-        function deleteAdherent(id) {
-            const docRef = doc(db, 'adherents', id);
-            deleteDoc(docRef).then(() => {
-                alert('Adhérent supprimé !');
-            }).catch(error => {
-                console.error("Erreur lors de la suppression : ", error);
+            Swal.fire({
+                title: `Modifier ${nom} ${prenom}`,
+                html: `
+                    <input id="newNom" class="swal2-input" placeholder="Nouveau Nom" value="${nom}">
+                    <input id="newPrenom" class="swal2-input" placeholder="Nouveau Prénom" value="${prenom}">
+                `,
+                preConfirm: () => {
+                    const newNom = document.getElementById('newNom').value;
+                    const newPrenom = document.getElementById('newPrenom').value;
+                    return { newNom, newPrenom };
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const docRef = doc(db, 'adherents', id);
+                    addDoc(docRef, {
+                        Nom: result.value.newNom,
+                        Prénom: result.value.newPrenom
+                    }).then(() => {
+                        Swal.fire('Adhérent modifié !', '', 'success');
+                    }).catch(error => {
+                        Swal.fire('Erreur', 'Impossible de modifier', 'error');
+                    });
+                }
             });
         }
-    </script>    
-</body>
+    
+        // Supprimer un adhérent
+        function deleteAdherent(id) {
+            Swal.fire({
+                title: 'Es-tu sûr de vouloir supprimer cet adhérent ?',
+                showCancelButton: true,
+                confirmButtonText: 'Supprimer',
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const docRef = doc(db, 'adherents', id);
+                    deleteDoc(docRef).then(() => {
+                        Swal.fire('Adhérent supprimé !', '', 'success');
+                    }).catch(error => {
+                        Swal.fire('Erreur', 'Impossible de supprimer', 'error');
+                    });
+                }
+            });
+        }
+    </script>
+    </body>
 </html>
